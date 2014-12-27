@@ -40,20 +40,6 @@ def slice_shifted(shiftX, shiftY):
     return yBegin, yEnd, xBegin, xEnd
 
 
-def advance(n, max_n):
-    """
-    Increment/decrement n (if n is non-negative/negative respectively) if it isn't max_n/-max_n already.
-    :return: (n, changed), where 'changed' is True if n was incremented/decremented
-    """
-    if n >= 0:
-        if n < max_n:
-            return n + 1, True
-    else:
-        if n > -max_n:
-            return n - 1, True
-    return n, False
-
-
 def draw_shift(img, shiftX, shiftY, color=(255, 255, 255)):
     """
     Draw a rectangle corresponding to the shift
@@ -88,30 +74,22 @@ def stitch_screenshots(screensDir):
                 bestMatch = match
                 if bestMatch >= matchThresh:
                     break
-            # Move to next location. Currently scans by rows.
-            # TODO: Check small shifts in every direction first, gradually expanding the search area
-            x, changed = advance(x, maxX)
-            if not changed:
-                # Row finished
-                y, changed = advance(y, maxY)
-                if changed:
-                    x = 0 if x > 0 else -1
-                else:
-                    # Quadrant finished
-                    if y > 0:
-                        if x > 0:
-                            x = -1
-                            y = 0
-                        else:
-                            x = 0
-                            y = -1
+            # Move to next location. Scans in a spiral, starting with small shifts in every direction.
+            if x == y and x <= 0:  # End of a circle, go to the next one
+                y -= 1
+                dx = 1
+                dy = 0
+            else:
+                if abs(x) == abs(y):  # A corner
+                    if dy == 0:  # We were moving horizontally
+                        dy = dx
+                        dx = 0
                     else:
-                        if x > 0:
-                            x = -1
-                            y = -1
-                        else:
-                            # Last quadrant finished
-                            break
+                        dx = -dy
+                        dy = 0
+                x += dx
+                y += dy
+            # TODO: Check for image borders or maximal assumed shift
         print "Best match: %.1f%%, shift: (%d, %d)" % (bestMatch / float(imgArea) * 100, bestX, bestY)
         displayCopy1, displayCopy2 = np.array(img1), np.array(img2)
         draw_shift(displayCopy1, bestX, bestY)
