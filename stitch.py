@@ -40,6 +40,11 @@ def slice_shifted(shiftX, shiftY):
     return yBegin, yEnd, xBegin, xEnd
 
 
+def sign(x):
+    """Signum function (except 0 isn't handled separately)"""
+    return 1 if x > 0 else -1
+
+
 def draw_shift(img, shiftX, shiftY, color=(255, 255, 255)):
     """
     Draw a rectangle corresponding to the shift
@@ -58,7 +63,7 @@ def stitch_screenshots(screensDir):
     height, width = imgs[0].shape[0:2]
     imgArea = height * width
     matchThresh = imgArea * 0.8
-    maxX, maxY = width - 1, height - 1
+    maxX, maxY = width - 1, height - 1  # TODO: Think of limiting the search range
     for img1, img2 in zip(imgs[:-1], imgs[1:]):
         gray1, gray2 = map(lambda img: cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (img1, img2))
         x = y = bestX = bestY = 0
@@ -89,7 +94,17 @@ def stitch_screenshots(screensDir):
                         dy = 0
                 x += dx
                 y += dy
-            # TODO: Check for image borders or maximal assumed shift
+            # If we've gone out of the search range (image borders), skip a part of the spiral
+            if abs(x) > maxX:
+                x -= sign(x)
+                y = -(y + sign(y))
+                dx = -dx
+            elif abs(y) > maxY:
+                y -= sign(y)
+                x = -(x + sign(x))
+                dy = -dy
+            if abs(x) > maxX or abs(y) > maxY:  # All positions checked
+                break
         print "Best match: %.1f%%, shift: (%d, %d)" % (bestMatch / float(imgArea) * 100, bestX, bestY)
         displayCopy1, displayCopy2 = np.array(img1), np.array(img2)
         draw_shift(displayCopy1, bestX, bestY)
